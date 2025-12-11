@@ -1,7 +1,9 @@
 import time
+from functools import lru_cache
+
 t0 = time.time()
 
-with open("input-test.txt", "r") as f:
+with open("input.txt", "r") as f:
     input_lines = f.readlines()
 
 class Node:
@@ -31,41 +33,54 @@ class UniqueChain:
         node_b = self.get_or_create_node(val_b)
         
         node_a.link(node_b)
-        print(f"Linked {val_a} -> {val_b}")
-    
-paths = dict()
+
+UC = UniqueChain()
+start_node = None
 for input_row in input_lines:
-    source, path = input_row.strip().split(":")
-    paths[source] = path.split()
+    source, paths = input_row.strip().split(":")
+    source_node = UC.get_or_create_node(source)
+    if source == "svr":
+        start_node = source_node
+    [UC.link_nodes(source, path) for path in paths.split()]
 
+def solve(start_node, chain):
+    @lru_cache(None)
+    def dfs(node_val, have_fft, have_dac):
 
-for key,values in paths.items():
-    node = Node(key)
-    
-    for value in values:
-        node.link(Node(value))
+        if node_val == "fft":
+            have_fft = True
+        if node_val == "dac":
+            have_dac = True
+        if node_val == "out":
+            return 1 if (have_fft and have_dac) else 0
+        node = chain.nodes[node_val]
+        total = 0
+        for nxt in node.get_paths():
+            total += dfs(nxt.val, have_fft, have_dac)
+        return total
 
+    return dfs(start_node.val, False, False)
 
+def traverse(current_node, visited_nodes, visited_special):
+    if current_node.val == "out":
+        return 1 if ("fft" in visited_special and "dac" in visited_special) else 0
 
-
-nbr_complete_paths = 0
-
-def traverse(current_path, visited_paths):
-    if current_path == "out":
-        if "fft" in visited_paths and "dac" in visited_paths:
-            return 1
-        else:
-            return 0
-    next_paths = paths[current_path]
-    if current_path in visited_paths:
+    if current_node.val in visited_nodes:
         return 0
-    visited_paths.append(current_path)
-    print(visited_paths)
-    return sum([traverse(p, visited_paths[:]) for p in next_paths])
-    
 
-starting_point = "svr"
-print(traverse(starting_point,[]))
+    new_visited_nodes = visited_nodes | {current_node.val}
+
+    new_visited_special = set(visited_special)
+    if current_node.val in ("fft", "dac"):
+        new_visited_special.add(current_node.val)
+
+    total = 0
+    for nxt in current_node.get_paths():
+        total += traverse(nxt, new_visited_nodes, new_visited_special)
+
+    return total
+    
+print(solve(start_node, UC))
 
 t1 = time.time()
 print("executed in {0:0.1f}ms".format((t1-t0)*1000))
