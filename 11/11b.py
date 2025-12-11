@@ -1,5 +1,4 @@
 import time
-from functools import lru_cache
 
 t0 = time.time()
 
@@ -43,10 +42,13 @@ for input_row in input_lines:
         start_node = source_node
     [UC.link_nodes(source, path) for path in paths.split()]
 
-def solve(start_node, chain):
-    @lru_cache(None)
-    def dfs(node_val, have_fft, have_dac):
+solved_nodes = dict()
 
+def solve(start_node, chain):
+    def dfs(node_val, have_fft, have_dac):
+        input_data = (node_val, have_fft, have_dac)
+        if input_data in solved_nodes:
+            return solved_nodes[input_data]
         if node_val == "fft":
             have_fft = True
         if node_val == "dac":
@@ -57,6 +59,7 @@ def solve(start_node, chain):
         total = 0
         for nxt in node.get_paths():
             total += dfs(nxt.val, have_fft, have_dac)
+        solved_nodes[input_data] = total
         return total
 
     return dfs(start_node.val, False, False)
