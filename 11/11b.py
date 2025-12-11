@@ -63,25 +63,6 @@ def solve(start_node, chain):
         return total
 
     return dfs(start_node.val, False, False)
-
-def traverse(current_node, visited_nodes, visited_special):
-    if current_node.val == "out":
-        return 1 if ("fft" in visited_special and "dac" in visited_special) else 0
-
-    if current_node.val in visited_nodes:
-        return 0
-
-    new_visited_nodes = visited_nodes | {current_node.val}
-
-    new_visited_special = set(visited_special)
-    if current_node.val in ("fft", "dac"):
-        new_visited_special.add(current_node.val)
-
-    total = 0
-    for nxt in current_node.get_paths():
-        total += traverse(nxt, new_visited_nodes, new_visited_special)
-
-    return total
     
 print(solve(start_node, UC))
 
