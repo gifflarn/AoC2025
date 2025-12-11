@@ -1,13 +1,15 @@
 import time
-from itertools import chain, combinations_with_replacement
+import pulp
+
 t0 = time.time()
-invalid_ids = set()
+
+goal_arr = []
+input_arr = []
 
 with open("input.txt", "r") as f:
     inputlines = f.readlines()
 
-goal_arr = []
-input_arr = []
+
 for line in inputlines:
     row_input = []
     for i,chunk in enumerate(reversed(line.split())):
@@ -29,45 +31,28 @@ for line in inputlines:
                 row_input.append(input_input)
     input_arr.append(row_input)
 
+total_sum = 0
 
-def sum_to_n(n, k):
-    num_splits = k - 1
+for i, (goal, inputs) in enumerate(zip(goal_arr, input_arr)):
+    n = len(inputs)
 
-    mid_with_zero = list(range(0, n + 1)) 
-    splits = combinations_with_replacement(mid_with_zero, num_splits)
-    for s in splits:
-        cumulative_sums = list(chain([0], s, [n]))
-        parts = [cumulative_sums[j] - cumulative_sums[j-1] 
-                 for j in range(1, len(cumulative_sums))]
-        
-        yield parts
+    prob = pulp.LpProblem(str(i), pulp.LpMinimize)
+    pulps = []
+    for j in range(n):
+        variable = pulp.LpVariable(f"x{j}", lowBound=0, cat='Integer')
+        pulps.append(variable)
+    for col in range(len(goal)):
+        column_sum = 0
+        for row in range(n):
+            column_sum += pulps[row] * inputs[row][col]
+        prob += column_sum == goal[col]
+    prob += pulp.lpSum(pulps)
 
-sum_calculations = 0
-L = 2
-complete_rows = []
-while len(goal_arr) > len(complete_rows):
-    for i,(goal, input) in enumerate(zip(goal_arr, input_arr)):
-        if i in complete_rows: 
-            continue
-        for factors in sum_to_n(L,len(input)):
-            result = [0]*len(goal)
-            for n, input_row in zip(factors, input):
-                skip = False
-                for idx, val in enumerate(input_row):
-                    if val == 1:
-                        result[idx] += n
-                    if result[idx] > goal[idx]:
-                        skip = True
-                if skip:
-                    continue
-            if result == goal:
-                sum_calculations += L
-                complete_rows.append(i)
-                print(len(complete_rows))
-                break
-    L+=1
-print(sum_calculations)
+    status = prob.solve(pulp.PULP_CBC_CMD(msg=0))
+    solution = [int(pulp.value(var)) for var in x]
+    row_sum = sum(solution)
+    total_sum += row_sum
 
-
+print(total_sum)
 t1 = time.time()
-print("executed in {0:0.1f}ms".format((t1-t0)*1000))
+print(f"Executed in {(t1-t0)*1000:0.1f}ms")
